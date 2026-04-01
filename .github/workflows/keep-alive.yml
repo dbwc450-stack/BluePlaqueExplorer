@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Ping Supabase plaques table
         run: |
-          curl -X GET "${{ secrets.https://wegnknkebcguglkmxlxx.supabase.co }}/rest/v1/plaques?select=id&limit=1" \
-            -H "apikey: ${{ secrets.sb_publishable_RrghKX1FabZeGf7WaKZI1g_zUe7jodL }}" \
-            -H "Authorization: Bearer ${{ sb_publishable_RrghKX1FabZeGf7WaKZI1g_zUe7jodL }}"
+          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/plaques?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
