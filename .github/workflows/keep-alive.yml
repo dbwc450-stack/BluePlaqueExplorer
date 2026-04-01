@@ -13,4 +13,4 @@ jobs:
         run: |
           curl -X GET "${{ secrets.https://wegnknkebcguglkmxlxx.supabase.co }}/rest/v1/plaques?select=id&limit=1" \
             -H "apikey: ${{ secrets.sb_publishable_RrghKX1FabZeGf7WaKZI1g_zUe7jodL }}" \
-            -H "Authorization: Bearer ${{ secrets.sb_publishable_RrghKX1FabZeGf7WaKZI1g_zUe7jodL }}"
+            -H "Authorization: Bearer ${{ sb_publishable_RrghKX1FabZeGf7WaKZI1g_zUe7jodL }}"
