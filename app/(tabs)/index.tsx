@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
@@ -28,16 +28,7 @@ const cleanTitle = (title: string) =>
     .replace(/ Plaque/gi, '')
     .trim();
 
-const buildMapHTML = (plaques: Plaque[]) => {
-  const markers = plaques.map(p => ({
-    id: p.open_plaques_id,
-    lat: p.latitude,
-    lng: p.longitude,
-    title: cleanTitle(p.title),
-    address: p.address ?? '',
-  }));
-
-  return `
+const MAP_HTML = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -66,14 +57,26 @@ const buildMapHTML = (plaques: Plaque[]) => {
       iconAnchor: [7, 7],
     });
 
-    const markers = ${JSON.stringify(markers)};
+    const markerMap = {};
 
-    markers.forEach(function(p) {
-      const marker = L.marker([p.lat, p.lng], { icon: blueIcon }).addTo(map);
-      marker.on('click', function() {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ id: p.id }));
+    function updateMarkers(plaques) {
+      const newIds = new Set(plaques.map(p => p.id));
+      Object.keys(markerMap).forEach(function(id) {
+        if (!newIds.has(Number(id))) {
+          markerMap[id].remove();
+          delete markerMap[id];
+        }
       });
-    });
+      plaques.forEach(function(p) {
+        if (!markerMap[p.id]) {
+          const marker = L.marker([p.lat, p.lng], { icon: blueIcon }).addTo(map);
+          marker.on('click', function() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ id: p.id }));
+          });
+          markerMap[p.id] = marker;
+        }
+      });
+    }
 
     map.on('moveend', function() {
       const b = map.getBounds();
@@ -88,18 +91,12 @@ const buildMapHTML = (plaques: Plaque[]) => {
   </script>
 </body>
 </html>
-  `;
-};
+`;
 
 export default function MapScreen() {
-  const [plaques, setPlaques] = useState<Plaque[]>([]);
-  const [loading, setLoading] = useState(true);
-  const isFetching = useRef(false);
   const webViewRef = useRef<WebView>(null);
-
-  useEffect(() => {
-    fetchPlaques(-0.5, 0.5, 51.2, 51.8);
-  }, []);
+  const isFetching = useRef(false);
+  const fetchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function fetchPlaques(minLng: number, maxLng: number, minLat: number, maxLat: number) {
     if (isFetching.current) return;
@@ -115,12 +112,21 @@ export default function MapScreen() {
         .lte('longitude', maxLng)
         .limit(200);
 
-      if (data) setPlaques(data);
+      if (data) {
+        const plaques = data.map(p => ({
+          id: p.open_plaques_id,
+          lat: p.latitude,
+          lng: p.longitude,
+          title: cleanTitle(p.title),
+          address: p.address ?? '',
+        }));
+        const js = `updateMarkers(${JSON.stringify(plaques)}); true;`;
+        webViewRef.current?.injectJavaScript(js);
+      }
     } catch (e) {
       console.log('Fetch error:', e);
     } finally {
       isFetching.current = false;
-      setLoading(false);
     }
   }
 
@@ -128,7 +134,10 @@ export default function MapScreen() {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
       if (msg.type === 'region') {
-        fetchPlaques(msg.minLng, msg.maxLng, msg.minLat, msg.maxLat);
+        if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
+        fetchTimeout.current = setTimeout(() => {
+          fetchPlaques(msg.minLng, msg.maxLng, msg.minLat, msg.maxLat);
+        }, 300);
       } else if (msg.id) {
         router.push(`/plaque/${msg.id}`);
       }
@@ -137,23 +146,24 @@ export default function MapScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#1a4fa0" />
-      </View>
-    );
-  }
+  const onWebViewLoad = () => {
+    fetchPlaques(-0.5, 0.5, 51.2, 51.8);
+  };
 
   return (
     <View style={styles.container}>
       <WebView
         ref={webViewRef}
-        source={{ html: buildMapHTML(plaques) }}
+        source={{ html: MAP_HTML, baseUrl: 'https://unpkg.com' }}
         style={styles.map}
         onMessage={onMessage}
+        onLoad={onWebViewLoad}
         javaScriptEnabled
         domStorageEnabled
+        originWhitelist={['*']}
+        allowUniversalAccessFromFileURLs
+        allowFileAccessFromFileURLs
+        allowFileAccess
         startInLoadingState
         renderLoading={() => (
           <View style={styles.loading}>
