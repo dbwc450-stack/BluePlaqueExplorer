@@ -3,26 +3,25 @@
     "name": "Blue Plaque Explorer",
     "slug": "blue-plaque-explorer",
     "scheme": "bpe",
-
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ff0000"
     },
-
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.blueplaqueexplorer"
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ff0000"
-      }
+      },
+      "package": "com.anonymous.blueplaqueexplorer"
     }
   }
 }
